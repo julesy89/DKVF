@@ -1,6 +1,6 @@
-# DKVF
+# CSE812 - Project
 
-Welcome! 
+Experimental Adaptive Causal Consistency Framework (EACCF)
 
-Please refer to Wiki. 
-https://github.com/roohitavaf/DKVF/wiki
+Kira Chan, Julian Blank
+
