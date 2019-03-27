@@ -9,7 +9,8 @@
                 <client_jar_file>EACCF_client.jar</client_jar_file>
                 <client_class_name>edu.msu.cse.accf.client.EACCFClient</client_class_name>
                 <workload>properties.txt</workload>
-                <key>key.txt</key>
+                <username>julesy</username>
+                <password>j1u2l3i4</password>
                 <working_directory>/Users/julesy/workspace/DKVF/Experiment/client_1</working_directory>
                 <protocol_properties>
                     <property key="num_of_tracking_groups" value="1"/>
@@ -27,7 +28,8 @@
                 <client_jar_file>EACCF_client.jar</client_jar_file>
                 <client_class_name>edu.msu.cse.accf.client.EACCFClient</client_class_name>
                 <workload>properties.txt</workload>
-                <key>key.txt</key>
+                <username>julesy</username>
+                <password>j1u2l3i4</password>
                 <working_directory>/Users/julesy/workspace/DKVF/Experiment/client_0</working_directory>
                 <protocol_properties>
                     <property key="num_of_tracking_groups" value="1"/>
