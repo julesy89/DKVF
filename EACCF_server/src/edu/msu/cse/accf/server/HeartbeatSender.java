@@ -13,7 +13,13 @@ public class HeartbeatSender implements Runnable {
 		long ct = System.currentTimeMillis(); 
 		if (ct > server.timeOfLastRepOrHeartbeat + server.heartbeatInterval){
 			server.updateHlc();
-			ServerMessage sm = ServerMessage.newBuilder().setHeartbeatMessage(HeartbeatMessage.newBuilder().setTg(server.tg_id).setTime(server.vv.get(server.tg_id).get())).build();
+			ServerMessage sm = ServerMessage.newBuilder()
+					.setHeartbeatMessage(
+							HeartbeatMessage
+									.newBuilder()
+									.setTg(server.TRACKING_GROUP)
+									.setTime(server.VV().get(server.TRACKING_GROUP)))
+					.build();
 			for (String id : server.sendVV) {
 				server.sendToServerViaChannel(id, sm);
 			}

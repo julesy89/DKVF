@@ -7,6 +7,39 @@ import java.util.List;
 import edu.msu.cse.dkvf.metadata.Metadata.TgTimeItem;
 
 public class Utils {
+
+	static <T> List<T> createList(int n, T val) {
+		List<T> ret = new ArrayList<>();
+        for (int j = 0; j < n; j++) {
+            ret.add(val);
+        }
+		return ret;
+	}
+
+	static <T> List<List<T>> createMatrix(int n, int m, T val) {
+		List<List<T>> ret = new ArrayList<>();
+		for (int i = 0; i < n; i++) {
+			List<T> l = new ArrayList<>();
+			for (int j = 0; j < m; j++) {
+				l.add(val);
+			}
+			ret.add(l);
+		}
+		return ret;
+	}
+
+
+	static void addEntriesAsMatrix(String str, List<List<Integer>> ret) {
+		String[] vals = str.split(";");
+		for (String entry : vals) {
+			List<Integer> l = new ArrayList<>();
+			for (String e : entry.split(",")){
+				l.add(Integer.valueOf(e.trim()));
+			}
+			ret.add(l);
+		}
+	}
+
 	static List<Long> max (List<Long> first, List<Long> second){
 		List<Long> result = new ArrayList<>();
 		for (int i=0; i < first.size(); i++){ 

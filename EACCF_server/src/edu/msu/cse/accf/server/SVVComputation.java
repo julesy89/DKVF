@@ -2,67 +2,60 @@ package edu.msu.cse.accf.server;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import edu.msu.cse.dkvf.metadata.Metadata.SVVMessage;
 import edu.msu.cse.dkvf.metadata.Metadata.ServerMessage;
 import edu.msu.cse.dkvf.metadata.Metadata.VVMessage;
 
+import static edu.msu.cse.accf.server.Utils.createMatrix;
+
 public class SVVComputation implements Runnable {
 
 	EACCFServer server;
 
 	public SVVComputation(EACCFServer server) {
-		this.server = server;
+	    this.server = server;
 	}
 
 	@Override
 	public void run() {
 
-        List<List<Long>> svv = new ArrayList<>();
+        List<List<Long>> svv = createMatrix(server.checkingGroups.size(),
+                server.trackingGroups.size(), Long.MAX_VALUE);
 
-		//take minimum of all childrens
-		List<Long> minVv = new ArrayList<>();
-		for (AtomicLong v : server.vv) {
-			minVv.add(v.get());
-		}
+        // for each checking group we have defined
+		for(List<Integer> cg : server.checkingGroups) {
 
-		for(List<Integer> checkingGroup : server.checkingGroups) {
-			List<Long> _svv = new ArrayList<>(minVv);
-			for (int serverInCheckingGroup : checkingGroup) {
+		    // for each server in the checking group
+			for (int id : cg) {
 
-				List<Long> vv = server.childrenVvs.get(serverInCheckingGroup);
-
+				List<Long> vv = server.vvs.get(id);
 				for (int i = 0; i < vv.size(); i++) {
-					if (_svv.get(i) > vv.get(i)) {
-						_svv.set(i, vv.get(i));
-					}
+
+                    for (int j = 0; j < server.trackingGroups.size(); j++) {
+                        if (svv.get(i).get(j) > vv.get(i)) svv.get(i).set(j, vv.get(i));
+                    }
+
 				}
 			}
 
-			svv.add(_svv);
-
 		}
 
-		server.setSvv(svv);
+		// just one vector because of tracking group assumption
+		List<Long> _svv = svv.get(server.TRACKING_GROUP);
+        server.setSvv(_svv);
 
+        // send to all in checking group
+        ServerMessage sm = ServerMessage.newBuilder().setSvvMessage(
+                SVVMessage
+                        .newBuilder()
+                        .addAllSvvItem(_svv))
+                .build();
 
-
-		//if the node is parent it send DsvMessage to its children
-		ServerMessage sm = null;
-		if (server.parentPId == server.pId) {
-			server.setSvv(minVv);
-			sm = ServerMessage.newBuilder().setSvvMessage(SVVMessage.newBuilder().addAllSvvItem(minVv)).build();
-			server.sendToAllInCheckingGroup(sm);
-			//server.protocolLOGGER.info(MessageFormat.format(">>>SVV[0]= {0}", server.svv.get(0)));
-		}
-		//if the node is not root, it send vvMessage to its parent.
-		else {
-			VVMessage vvM = VVMessage.newBuilder().setPId(server.pId).addAllVvItem(minVv).build();
-			sm = ServerMessage.newBuilder().setVvMessage(vvM).build();
-			server.sendToServerViaChannel(server.cg_id + "_" + server.parentPId, sm);
-		}
+        for (String s: server.sendSVV) {
+            server.sendToServerViaChannel(s, sm);
+        }
 
 	}
 
