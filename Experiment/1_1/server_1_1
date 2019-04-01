@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<config>
+    <id>1_1</id>
+    <client_port>3010</client_port>
+    <server_port>3011</server_port>
+    <control_port>3012</control_port>
+    <connect_to>
+        <server id="0_0" ip="127.0.0.1" port="2001"/>
+        <server id="1_0" ip="127.0.0.1" port="3001"/>
+        <server id="0_1" ip="127.0.0.1" port="2011"/>
+        <server id="0_2" ip="127.0.0.1" port="2021"/>
+        <server id="0_3" ip="127.0.0.1" port="2031"/>
+        <server id="1_2" ip="127.0.0.1" port="3021"/>
+        <server id="1_3" ip="127.0.0.1" port="3031"/>
+    </connect_to>
+    <protocol_properties>
+        <property key="children_p_ids" value="0"/>
+        <property key="num_of_tracking_groups" value="1"/>
+        <property key="cg_id" value="0"/>
+        <property key="tg_id" value="0"/>
+        <property key="message_delay" value="5"/>
+        <property key="num_of_partitions" value="1"/>
+        <property key="heartbeat_interval" value="1000"/>
+        <property key="p_id" value="1"/>
+        <property key="parent_p_id" value="1"/>
+        <property key="svv_comutation_interval" value="500"/>
+    </protocol_properties>
+</config>

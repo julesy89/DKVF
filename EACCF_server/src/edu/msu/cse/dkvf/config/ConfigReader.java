@@ -80,6 +80,15 @@ public class ConfigReader {
 	final static String FRAMEWORK_STD_LOG_LEVEL_DEFAULT = "off";
 	final static String XSD_FILE = "XSDs/Config.xsd";
 
+
+	/**
+	 * Default config reader without any arguments
+	 */
+	public ConfigReader() {
+	    setConfig(new Config());
+	}
+
+
 	/**
 	 * Constructor for ConfigReader
 	 * @param configFile The configuration file

@@ -43,6 +43,9 @@ public class ClientHandler implements Runnable {
 			CodedInputStream in = CodedInputStream.newInstance(clientSocket.getInputStream());
 			CodedOutputStream out = CodedOutputStream.newInstance(clientSocket.getOutputStream());
 			while (true) {
+
+				if (in.isAtEnd()) continue;
+
 				int size = in.readInt32();
 				byte[] newMessageBytes = in.readRawBytes(size);
 				ClientMessage cm = ClientMessage.parseFrom(newMessageBytes);
@@ -51,9 +54,11 @@ public class ClientHandler implements Runnable {
 					protocol.decrementNumberOfClients();
 					return;
 				}
-				LOGGER.finer(MessageFormat.format("New clinet message arrived:\n{0}", cm.toString()));
+				LOGGER.finer(MessageFormat.format("New client message arrived:\n{0}", cm.toString()));
 				ClientMessageAgent cma = new ClientMessageAgent(cm, out, LOGGER);
 				protocol.handleClientMessage(cma);
+
+
 			}
 		} catch (Exception e) {
 			LOGGER.severe(Utils.exceptionLogMessge("Error in reading client message. toString: {0} Message:\n{1}", e));

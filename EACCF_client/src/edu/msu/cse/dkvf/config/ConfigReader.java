@@ -80,6 +80,15 @@ public class ConfigReader {
 	final static String FRAMEWORK_STD_LOG_LEVEL_DEFAULT = "off";
 	final static String XSD_FILE = "XSDs/Config.xsd";
 
+
+	/**
+	 * Default config reader without any arguments
+	 */
+	public ConfigReader() {
+		setConfig(new Config());
+	}
+
+
 	/**
 	 * Constructor for ConfigReader
 	 * @param configFile The configuration file
@@ -106,7 +115,7 @@ public class ConfigReader {
 
 	/**
 	 * Reads the {@link Config} object to explore its elements.
-	 * 
+	 *
 	 * @param cnf
 	 *            Config object to read
 	 */
@@ -158,7 +167,7 @@ public class ConfigReader {
 			Property p4 = new Property();
 			p4.setKey("multi_version");
 			p4.setValue(MULTI_VERSION_DEFAULT);
-			
+
 			cnf.getStorage().getProperty().add(p1);
 			cnf.getStorage().getProperty().add(p2);
 			cnf.getStorage().getProperty().add(p3);
@@ -190,10 +199,10 @@ public class ConfigReader {
 		if (cnf.getProtocolProperties() != null) {
 			for (Property p : cnf.getProtocolProperties().getProperty()) {
 				ArrayList<String> value = new ArrayList<>();
-				String valueStr = p.getValue(); 
+				String valueStr = p.getValue();
 				String[] valueStrParts = valueStr.trim().split(",");
 				for (String s : valueStrParts){
-					s = s.trim(); 
+					s = s.trim();
 					if (!s.isEmpty())
 						value.add(s.trim());
 				}
@@ -221,7 +230,7 @@ public class ConfigReader {
 
 	/**
 	 * Gets the parsed configuration.
-	 * 
+	 *
 	 * @return The parsed configuration.
 	 */
 	public Config getConfig() {
@@ -230,7 +239,7 @@ public class ConfigReader {
 
 	/**
 	 * Gets the parsed storage properties.
-	 * 
+	 *
 	 * @return The parsed storage properties
 	 */
 	public HashMap<String, String> getStorageProperties() {
@@ -239,7 +248,7 @@ public class ConfigReader {
 
 	/**
 	 * Gets the parsed protocol properties.
-	 * 
+	 *
 	 * @return The parsed protocol properties
 	 */
 	public HashMap<String, List<String>> getProtocolProperties() {
@@ -248,7 +257,7 @@ public class ConfigReader {
 
 	/**
 	 * Gets the parsed server information.
-	 * 
+	 *
 	 * @return The parsed server information
 	 */
 	public ArrayList<ServerInfo> getServerInfos() {

@@ -1,47 +1,39 @@
 package edu.msu.cse.accf.server;
 
+import edu.msu.cse.dkvf.ClientMessageAgent;
+import edu.msu.cse.dkvf.DKVFServer;
+import edu.msu.cse.dkvf.Storage.StorageStatus;
+import edu.msu.cse.dkvf.config.ConfigReader;
+import edu.msu.cse.dkvf.metadata.Metadata.*;
+
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
-import edu.msu.cse.accf.server.Utils;
-import edu.msu.cse.dkvf.ClientMessageAgent;
-import edu.msu.cse.dkvf.DKVFServer;
-import edu.msu.cse.dkvf.Storage.StorageStatus;
-import edu.msu.cse.dkvf.config.ConfigReader;
-import edu.msu.cse.dkvf.metadata.Metadata.ClientReply;
-import edu.msu.cse.dkvf.metadata.Metadata.GetMessage;
-import edu.msu.cse.dkvf.metadata.Metadata.GetReply;
-import edu.msu.cse.dkvf.metadata.Metadata.PutMessage;
-import edu.msu.cse.dkvf.metadata.Metadata.PutReply;
-import edu.msu.cse.dkvf.metadata.Metadata.Record;
-import edu.msu.cse.dkvf.metadata.Metadata.ReplicateMessage;
-import edu.msu.cse.dkvf.metadata.Metadata.SVVMessage;
-import edu.msu.cse.dkvf.metadata.Metadata.ServerMessage;
-import edu.msu.cse.dkvf.metadata.Metadata.TgTimeItem;
-
 public class EACCFServer extends DKVFServer {
 
-	List<Long> svv; //In this implementation, we assume each server is in only one tracking group.
-	int cg_id;// checking group id
-	int tg_id;// tracking group id
-	int pId; // partition id
-	int numOfTrackingGroups;
-	int numOfPartitions;
+	List<List<Long>> svv;
 
-	// GST computation
+	int replicaID;
+    int partitionID;
+
 	ArrayList<AtomicLong> vv;
-	HashMap<Integer, List<Long>> childrenVvs;
 
-	// Tree structure
-	List<Integer> childrenPIds;
+	List<List<Integer>> checkingGroups;
+    Set<Integer> sendSVV;
+
+    List<List<String>> trackingGroups;
+    Set<String> sendVV;
+
+    HashMap<Integer, List<Long>> childrenVvs;
+
 	int parentPId;
 
 	// intervals
@@ -63,44 +55,57 @@ public class EACCFServer extends DKVFServer {
 		super(cnfReader);
 		HashMap<String, List<String>> protocolProperties = cnfReader.getProtocolProperties();
 
-		cg_id = new Integer(protocolProperties.get("cg_id").get(0));
-		tg_id = new Integer(protocolProperties.get("tg_id").get(0));
-		pId = new Integer(protocolProperties.get("p_id").get(0));
-
-		
+        replicaID = new Integer(protocolProperties.get("replicaID").get(0));
+        partitionID = new Integer(protocolProperties.get("partitionID").get(0));
 		messageDelay = new Integer(protocolProperties.get("message_delay").get(0));
-		
-		parentPId = new Integer(protocolProperties.get("parent_p_id").get(0));
-		childrenPIds = new ArrayList<Integer>();
-		if (protocolProperties.get("children_p_ids") != null) {
-			for (String id : protocolProperties.get("children_p_ids")) {
-				childrenPIds.add(new Integer(id));
-			}
-		}
 
-		numOfTrackingGroups = new Integer(protocolProperties.get("num_of_tracking_groups").get(0));
-		numOfPartitions = new Integer(protocolProperties.get("num_of_partitions").get(0));
+
+        trackingGroups = new ArrayList<>();
+        String str = String.valueOf(protocolProperties.get("tracking_groups"));
+        String[] vals = str.split(";");
+        for (String entry : vals) {
+            List<String> l = new ArrayList<>();
+            for (String e : entry.split(",")){
+                l.add(e);
+                sendVV.add(e);
+            }
+            trackingGroups.add(l);
+        }
+
+        vv = new ArrayList<>();
+        ArrayList<Long> allZero = new ArrayList<>();
+        for (int i = 0; i < trackingGroups.size(); i++) {
+            vv.add(i, new AtomicLong(0));
+            allZero.add(new Long(0));
+        }
+
+
+        checkingGroups = new ArrayList<>();
+        str = String.valueOf(protocolProperties.get("checking_groups"));
+        vals = str.split(";");
+        for (String entry : vals) {
+            List<Integer> l = new ArrayList<>();
+            for (String e : entry.split(",")){
+                int i = Integer.valueOf(e);
+                l.add(i);
+                sendSVV.add(i);
+            }
+            checkingGroups.add(l);
+        }
+
+        svv = new ArrayList<>();
+        for (int i = 0; i < checkingGroups.size(); i++) {
+            List<Long> l = new ArrayList<>();
+            for (int j = 0; j < trackingGroups.size(); j++) {
+                l.add(new Long(0));
+            }
+            svv.add(l);
+        }
+
 
 		heartbeatInterval = new Integer(protocolProperties.get("heartbeat_interval").get(0));
 		svvComutationInterval = new Integer(protocolProperties.get("svv_comutation_interval").get(0));
 
-		vv = new ArrayList<>();
-		ArrayList<Long> allZero = new ArrayList<>();
-		for (int i = 0; i < numOfTrackingGroups; i++) {
-			vv.add(i, new AtomicLong(0));
-			allZero.add(new Long(0));
-		}
-		
-		
-		childrenVvs = new HashMap<>();
-		for (int cpId: childrenPIds){
-			childrenVvs.put(cpId, allZero);
-		}
-
-		svv = new ArrayList<>();
-		for (int i = 0; i < numOfTrackingGroups; i++) {
-			svv.add(i, new Long(0));
-		}
 
 		// Scheduling periodic operations
 		ScheduledExecutorService heartbeatTimer = Executors.newScheduledThreadPool(1);
@@ -109,7 +114,7 @@ public class EACCFServer extends DKVFServer {
 		heartbeatTimer.scheduleAtFixedRate(new HeartbeatSender(this), 0, heartbeatInterval, TimeUnit.MILLISECONDS);
 		dsvComputationTimer.scheduleAtFixedRate(new SVVComputation(this), 0, svvComutationInterval, TimeUnit.MILLISECONDS);
 		
-		protocolLOGGER.info("Server initiated sucessfully");
+		protocolLOGGER.info("Server initiated successfully");
 		channelDelay = messageDelay;
 	}
 
@@ -124,8 +129,10 @@ public class EACCFServer extends DKVFServer {
 
 	private void handleGetMessage(ClientMessageAgent cma) {
 		protocolLOGGER.info(MessageFormat.format("Get message arrived! for key {0}", cma.getClientMessage().getGetMessage().getKey()));
-		//In this implementation, we assume the server is in only one checking group. Thus, we don't read client's checking group for now. 
-		//wait for SVV
+		// In this implementation, we assume the server is in only one checking group.
+		// Thus, we don't read client's checking group for now.
+		// wait for SVV
+
 		List<TgTimeItem> ds = cma.getClientMessage().getGetMessage().getDsItemList();
 		for (int i = 0; i < ds.size(); i++) {
 			TgTimeItem dti = ds.get(i);
@@ -146,7 +153,7 @@ public class EACCFServer extends DKVFServer {
 		boolean isSvvLargeEnough = true; 
 		for (int i = 0; i < ds.size(); i++) {
 			TgTimeItem dti = ds.get(i);
-			if (svv.get(dti.getTg()) < dti.getTime()) {
+			if (svv.get(gm.getCg()).get(dti.getTg()) < dti.getTime()) {
 				isSvvLargeEnough = false;
 				break;
 			}
@@ -174,6 +181,7 @@ public class EACCFServer extends DKVFServer {
 
 
 	Predicate<Record> isVisible = (Record r) -> {
+
 		//protocolLOGGER.info(MessageFormat.format("number of ds items= {0}",  r.getDsItemCount()));
 		if (svv.get(r.getTg()) < r.getUt()) {
 			return false;
@@ -192,6 +200,7 @@ public class EACCFServer extends DKVFServer {
 	};
 
 	private void handlePutMessage(ClientMessageAgent cma) {
+
 		PutMessage pm = cma.getClientMessage().getPutMessage();
 		long dt = Utils.maxDsTime(pm.getDsItemList());
 		updateHlc(dt);
@@ -216,51 +225,57 @@ public class EACCFServer extends DKVFServer {
 
 	private void sendReplicateMessages(String key, Record recordToReplicate) {
 		ServerMessage sm = ServerMessage.newBuilder().setReplicateMessage(ReplicateMessage.newBuilder().setTg(tg_id).setKey(key).setD(recordToReplicate)).build();
-		for (int i = 0; i < numOfTrackingGroups; i++) { //We can implement different data placement policies here.
-			if (i == tg_id)
-				continue;
-			String id = i + "_" + pId;
 
-			protocolLOGGER.finer(MessageFormat.format("Sendng replicate message to {0}: {1}", id, sm.toString()));
-			sendToServerViaChannel(id, sm);
+		for (String s : sendVV) { //We can implement different data placement policies here.
+			protocolLOGGER.finer(MessageFormat.format("Send replicate message to {0}: {1}", s, sm.toString()));
+			sendToServerViaChannel(s, sm);
 		}
 		timeOfLastRepOrHeartbeat = Utils.getPhysicalTime(); //we don't need to synchronize for it, because it is not critical
 	}
 
 	private void updateHlc(long dt) {
-		long vv_l = Utils.getL(vv.get(tg_id).get());
-		long physicalTime = Utils.getPhysicalTime();
-		long dt_l = Utils.getL(dt);
 
-		long newL = Math.max(Math.max(vv_l, dt_l), Utils.shiftToHighBits(physicalTime));
+        for (int tg_id = 0; tg_id < trackingGroups.size(); tg_id++) {
 
-		long vv_c = Utils.getC(vv.get(tg_id).get());
-		long dt_c = Utils.getC(dt);
-		long newC;
-		if (newL == vv_l && newL == dt_l)
-			newC = Math.max(vv_c, dt_c) + 1;
-		else if (newL == vv_l)
-			newC = vv_c + 1;
-		else if (newL == dt_l)
-			newC = dt_c + 1;
-		else
-			newC = 0;
-		vv.get(tg_id).set(newL + newC);
+            long vv_l = Utils.getL(vv.get(tg_id).get());
+            long physicalTime = Utils.getPhysicalTime();
+            long dt_l = Utils.getL(dt);
+
+            long newL = Math.max(Math.max(vv_l, dt_l), Utils.shiftToHighBits(physicalTime));
+
+            long vv_c = Utils.getC(vv.get(tg_id).get());
+            long dt_c = Utils.getC(dt);
+            long newC;
+            if (newL == vv_l && newL == dt_l)
+                newC = Math.max(vv_c, dt_c) + 1;
+            else if (newL == vv_l)
+                newC = vv_c + 1;
+            else if (newL == dt_l)
+                newC = dt_c + 1;
+            else
+                newC = 0;
+            vv.get(tg_id).set(newL + newC);
+
+        }
 	}
 
 	void updateHlc() {
-		long vv_l = Utils.getL(vv.get(tg_id).get());
-		long physicalTime = Utils.getPhysicalTime();
 
-		long newL = Math.max(vv_l, Utils.shiftToHighBits(physicalTime));
+        for (int tg_id = 0; tg_id < trackingGroups.size(); tg_id++) {
 
-		long vv_c = Utils.getC(vv.get(tg_id).get());
-		long newC;
-		if (newL == vv_l)
-			newC = vv_c + 1;
-		else
-			newC = 0;
-		vv.get(tg_id).set(newL + newC);
+            long vv_l = Utils.getL(vv.get(tg_id).get());
+            long physicalTime = Utils.getPhysicalTime();
+
+            long newL = Math.max(vv_l, Utils.shiftToHighBits(physicalTime));
+
+            long vv_c = Utils.getC(vv.get(tg_id).get());
+            long newC;
+            if (newL == vv_l)
+                newC = vv_c + 1;
+            else
+                newC = 0;
+            vv.get(tg_id).set(newL + newC);
+        }
 	}
 
 	public void handleServerMessage(ServerMessage sm) {
@@ -291,22 +306,25 @@ public class EACCFServer extends DKVFServer {
 	void handleVvMessage(ServerMessage sm) {
 		int senderPId = sm.getVvMessage().getPId();
 		List<Long> receivedVv = sm.getVvMessage().getVvItemList();
-		protocolLOGGER.finest("Recieved" + sm.toString());
+		protocolLOGGER.finest("Receive" + sm.toString());
 		childrenVvs.put(senderPId, receivedVv);
-		
 	}
 
 	void handleSvvMessage(ServerMessage sm) {
 		protocolLOGGER.finest(sm.toString());
 		setSvv(sm.getSvvMessage().getSvvItemList());
-		sm = ServerMessage.newBuilder().setSvvMessage(SVVMessage.newBuilder().addAllSvvItem(svv)).build();
-		sendToAllChildren(sm);
+
+        // we do not want to change the meta message data here
+		List<Long> concatenateSVV = new ArrayList<>();
+		for (List<Long> _svv : svv) concatenateSVV.addAll(_svv);
+
+		sm = ServerMessage.newBuilder().setSvvMessage(SVVMessage.newBuilder().addAllSvvItem(concatenateSVV)).build();
+		sendToAllInCheckingGroup(sm);
 	}
 
-	void sendToAllChildren(ServerMessage sm) {
-		for (Map.Entry<Integer, List<Long>> child : childrenVvs.entrySet()) {
-			int childId = child.getKey();
-			sendToServerViaChannel(cg_id + "_" + childId, sm);
+	void sendToAllInCheckingGroup(ServerMessage sm) {
+		for (int partition : sendSVV) {
+			sendToServerViaChannel(replicaID + "_" + partition, sm);
 		}
 	}
 

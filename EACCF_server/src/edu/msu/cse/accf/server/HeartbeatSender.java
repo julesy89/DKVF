@@ -14,10 +14,8 @@ public class HeartbeatSender implements Runnable {
 		if (ct > server.timeOfLastRepOrHeartbeat + server.heartbeatInterval){
 			server.updateHlc();
 			ServerMessage sm = ServerMessage.newBuilder().setHeartbeatMessage(HeartbeatMessage.newBuilder().setTg(server.tg_id).setTime(server.vv.get(server.tg_id).get())).build();
-			for (int i = 0; i < server.numOfTrackingGroups; i++) {
-				if (i == server.tg_id)
-					continue;
-				server.sendToServerViaChannel(i + "_" + server.pId, sm);
+			for (String id : server.sendVV) {
+				server.sendToServerViaChannel(id, sm);
 			}
 			server.timeOfLastRepOrHeartbeat = Utils.getPhysicalTime();
 		}
