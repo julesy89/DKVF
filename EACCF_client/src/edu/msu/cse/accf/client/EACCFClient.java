@@ -19,30 +19,49 @@ import edu.msu.cse.dkvf.metadata.Metadata.PutMessage;
 import edu.msu.cse.dkvf.metadata.Metadata.TgTimeItem;
 
 public class EACCFClient extends DKVFClient {
-	HashMap<Integer, Long> ds; //dependency set
-	int cg_id; //current checking group
-	
+
+    // dependency set that contains for each tracking group one value
+	HashMap<Integer, Long> ds;
+
+    // the replicate which the client is only speaking to
+	int replicaID;
+
+	// So fare hardcoded checking group - needs to change dynamically later on
+	final int CHECKING_GROUP = 0;
+
+	// number of partitions (necessary for key - server mapping here)
 	int numOfPartitions;
-	int numOfTrackingGroups;
+
 
 	public EACCFClient(ConfigReader cnfReader) {
 		super(cnfReader);
 		HashMap<String, List<String>> protocolProperties = cnfReader.getProtocolProperties();
-		numOfTrackingGroups = new Integer(protocolProperties.get("num_of_tracking_groups").get(0));
+
 		numOfPartitions = new Integer(protocolProperties.get("num_of_partitions").get(0));
 
-		cg_id = new Integer(protocolProperties.get("cg_id").get(0));
+		replicaID = new Integer(protocolProperties.get("replicaID").get(0));
 		ds = new HashMap<>();
 	}
 
+
 	public boolean put(String key, byte[] value) {
 		try {
-			PutMessage pm = PutMessage.newBuilder().setKey(key).setValue(ByteString.copyFrom(value)).addAllDsItem(getTgTimeItems()).build();
-			ClientMessage cm = ClientMessage.newBuilder().setPutMessage(pm).build();
+			PutMessage pm = PutMessage
+                    .newBuilder()
+                    .setKey(key)
+                    .setValue(ByteString.copyFrom(value))
+                    .addAllDsItem(getTgTimeItems())
+                    .build();
+
+			ClientMessage cm = ClientMessage.newBuilder().setPutMessage(pm)
+                    .build();
+
 			String serverId = findServer (key);
+
 			if (sendToServer(serverId, cm) == NetworkStatus.FAILURE)
 				return false;
 			ClientReply cr = readFromServer(serverId);
+
 			if (cr != null && cr.getStatus()) {
 				updateDS(cr.getPutReply().getTg(), cr.getPutReply().getUt());
 				return true;
@@ -58,9 +77,19 @@ public class EACCFClient extends DKVFClient {
 
 	public byte[] get(String key) {
 		try {
-			GetMessage gm = GetMessage.newBuilder().addAllDsItem(getTgTimeItems()).setKey(key).setCg(cg_id).build();
-			ClientMessage cm = ClientMessage.newBuilder().setGetMessage(gm).build();
+			GetMessage gm = GetMessage
+                    .newBuilder()
+                    .addAllDsItem(getTgTimeItems())
+                    .setKey(key)
+                    .setCg(CHECKING_GROUP)
+                    .build();
+
+			ClientMessage cm = ClientMessage
+                    .newBuilder().
+                            setGetMessage(gm).build();
+
 			String serverId = findServer (key);
+
 			if (sendToServer(serverId, cm) == NetworkStatus.FAILURE)
 				return null;
 			ClientReply cr = readFromServer(serverId);
@@ -83,7 +112,7 @@ public class EACCFClient extends DKVFClient {
 	public String findServer(String key) throws NoSuchAlgorithmException {
 		long hash = Utils.getMd5HashLong(key);
 		int partition =  (int) (hash % numOfPartitions);
-		return cg_id + "_" + partition; //we should change this function for final system. It can query a load balancer to find the server. 
+		return replicaID + "_" + partition; //we should change this function for final system. It can query a load balancer to find the server.
 	}
 
 	private void updateDS(int tg, long time) {
@@ -97,7 +126,13 @@ public class EACCFClient extends DKVFClient {
 	private List<TgTimeItem> getTgTimeItems() {
 		List<TgTimeItem> result = new ArrayList<>();
 		for (Map.Entry<Integer, Long> entry : ds.entrySet()) {
-			TgTimeItem dti = TgTimeItem.newBuilder().setTg(entry.getKey()).setTime(entry.getValue()).build();
+
+			TgTimeItem dti = TgTimeItem
+					.newBuilder()
+                    .setTg(entry.getKey())
+                    .setTime(entry.getValue())
+                    .build();
+
 			result.add(dti);
 		}
 		return result;

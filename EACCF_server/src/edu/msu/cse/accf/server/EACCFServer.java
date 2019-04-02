@@ -388,10 +388,10 @@ public class EACCFServer extends DKVFServer {
     // UTIL METHODS
     // ----------------------------------------------------------------------------------------
 
-    void setSvv(List<Long> newSvv) {
+    void setSvv(List<Long> _svv) {
 		synchronized (svv) {
-			for (int i=0; i<newSvv.size();i++)
-				svv.get(TRACKING_GROUP).set(i, newSvv.get(i));
+			for (int i=0; i<_svv.size();i++)
+				svv.get(TRACKING_GROUP).set(i, _svv.get(i));
 			svv.notify();
 		}
 	}
