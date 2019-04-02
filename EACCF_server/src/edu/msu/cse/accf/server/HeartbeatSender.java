@@ -3,6 +3,8 @@ package edu.msu.cse.accf.server;
 import edu.msu.cse.dkvf.metadata.Metadata.HeartbeatMessage;
 import edu.msu.cse.dkvf.metadata.Metadata.ServerMessage;
 
+import java.text.MessageFormat;
+
 public class HeartbeatSender implements Runnable {
 	EACCFServer server;
 	public HeartbeatSender(EACCFServer server) {
@@ -17,12 +19,14 @@ public class HeartbeatSender implements Runnable {
 					.setHeartbeatMessage(
 							HeartbeatMessage
 									.newBuilder()
-									.setTg(server.TRACKING_GROUP)
-									.setTime(server.VV().get(server.TRACKING_GROUP)))
+									.setTg(server.trackingGroupID)
+									.setTime(server.VV().get(server.trackingGroupID)))
 					.build();
-			for (String id : server.sendVV) {
-				server.sendToServerViaChannel(id, sm);
+
+			for (String s : server.sendReplicate) {
+				server.sendToServerViaChannel(s + "_" + server.partitionID, sm);
 			}
+
 			server.timeOfLastRepOrHeartbeat = Utils.getPhysicalTime();
 		}
 

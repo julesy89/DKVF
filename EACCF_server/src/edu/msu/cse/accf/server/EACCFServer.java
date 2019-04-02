@@ -12,7 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import static edu.msu.cse.accf.server.Utils.*;
 
@@ -37,12 +36,16 @@ public class EACCFServer extends DKVFServer {
     // the id of this server as a string
     String serverID;
 
+    // set of servers where the replicates are sent to
+    Set<String> sendReplicate;
+
+
     // ----------------------------------------------------------------------------------------
     // TRACKING GROUP - (here: a server is assigned only to one tracking group)
     // ----------------------------------------------------------------------------------------
 
-    // whenever this constant is used, the code assumes there is only one tracking group
-    final int TRACKING_GROUP = 0;
+    // tracking group this server is in
+    int trackingGroupID;
 
     // the VV vectors received in the tracking group - including my own VV
     Map<String, List<Long>> vvs = new HashMap<>();
@@ -63,9 +66,6 @@ public class EACCFServer extends DKVFServer {
 
     // the checking groups - the svv values of the checking groups make versions visible or not
     List<List<Integer>> checkingGroups = new ArrayList<>();
-
-    // list of servers the svv's are shared with (union of all checking groups)
-    Set<String> sendSVV = new HashSet<>();
 
 
     // ----------------------------------------------------------------------------------------
@@ -95,24 +95,25 @@ public class EACCFServer extends DKVFServer {
 		// read the configuration parameter and save them to the class
         replicaID = new Integer(protocolProperties.get("replicaID").get(0));
         partitionID = new Integer(protocolProperties.get("partitionID").get(0));
+        trackingGroupID = new Integer(protocolProperties.get("trackingGroupID").get(0));
         serverID = replicaID + "_" + partitionID;
 
-        // parse all the tracking groups and save them as a list of lists
-        trackingGroups = Arrays.asList(protocolProperties.get("tracking_groups"));
-        trackingGroups.forEach(e -> e.forEach(c -> sendVV.add(c)));
-        sendVV.remove(serverID);
+        // set the replicates send all updates to
+        sendReplicate = new HashSet(protocolProperties.get("replica"));
+        sendReplicate.remove(String.valueOf(replicaID));
 
-        if (this.trackingGroups.size() > 1) {
-            throw new RuntimeException("In this implementation only a server can only be assigned to one tracking group!");
-        }
+        // parse all the checking groups and save them as a list of lists
+        addEntriesAsMatrixAsString(String.valueOf(protocolProperties.get("tracking_groups"))
+                .replace('[', ' ')
+                .replace(']', ' '), trackingGroups);
+
+        trackingGroups.get(trackingGroupID).forEach(c -> sendVV.add(c));
+        sendVV.remove(serverID);
 
         // parse all the checking groups and save them as a list of lists
         addEntriesAsMatrix(String.valueOf(protocolProperties.get("checking_groups"))
                 .replace('[', ' ')
                 .replace(']', ' '), checkingGroups);
-
-        checkingGroups.forEach(e -> e.forEach(c -> sendSVV.add(replicaID + "_" + c)));
-        sendSVV.remove(serverID);
 
         // initialize all VVs for myself and all servers in the tracking group
         vvs.put(serverID, createList(trackingGroups.size(), 0L));
@@ -212,7 +213,11 @@ public class EACCFServer extends DKVFServer {
 			Record rec = result.get(0);
 			cr = ClientReply.newBuilder()
                     .setStatus(true)
-                    .setGetReply(GetReply.newBuilder().setD(rec)).build();
+                    .setGetReply(
+                            GetReply
+                                    .newBuilder()
+                                    .setD(rec))
+                    .build();
 		} else {
 			cr = ClientReply.newBuilder()
                     .setStatus(false)
@@ -233,8 +238,8 @@ public class EACCFServer extends DKVFServer {
 
 			rec = Record.newBuilder()
                     .setValue(pm.getValue())
-                    .setUt(VV().get(TRACKING_GROUP))
-                    .setTg(TRACKING_GROUP)
+                    .setUt(VV().get(trackingGroupID))
+                    .setTg(trackingGroupID)
                     .addAllDsItem(pm.getDsItemList())
                     .build();
 
@@ -249,7 +254,11 @@ public class EACCFServer extends DKVFServer {
 		if (ss == StorageStatus.SUCCESS) {
 			cr = ClientReply.newBuilder()
                     .setStatus(true)
-                    .setPutReply(PutReply.newBuilder().setUt(rec.getUt()).setTg(TRACKING_GROUP))
+                    .setPutReply(
+                            PutReply
+                                    .newBuilder()
+                                    .setUt(rec.getUt())
+                                    .setTg(trackingGroupID))
                     .build();
 
 		} else {
@@ -266,13 +275,13 @@ public class EACCFServer extends DKVFServer {
 
     private void updateHlc(long dt) {
 
-        long vv_l = Utils.getL(VV().get(TRACKING_GROUP));
+        long vv_l = Utils.getL(VV().get(trackingGroupID));
         long physicalTime = Utils.getPhysicalTime();
         long dt_l = Utils.getL(dt);
 
         long newL = Math.max(Math.max(vv_l, dt_l), Utils.shiftToHighBits(physicalTime));
 
-        long vv_c = Utils.getC(VV().get(TRACKING_GROUP));
+        long vv_c = Utils.getC(VV().get(trackingGroupID));
         long dt_c = Utils.getC(dt);
         long newC;
         if (newL == vv_l && newL == dt_l)
@@ -283,24 +292,24 @@ public class EACCFServer extends DKVFServer {
             newC = dt_c + 1;
         else
             newC = 0;
-        VV().set(TRACKING_GROUP, newL + newC);
+        VV().set(trackingGroupID, newL + newC);
 
 	}
 
 	void updateHlc() {
 
-        long vv_l = Utils.getL(VV().get(TRACKING_GROUP));
+        long vv_l = Utils.getL(VV().get(trackingGroupID));
         long physicalTime = Utils.getPhysicalTime();
 
         long newL = Math.max(vv_l, Utils.shiftToHighBits(physicalTime));
 
-        long vv_c = Utils.getC(VV().get(TRACKING_GROUP));
+        long vv_c = Utils.getC(VV().get(trackingGroupID));
         long newC;
         if (newL == vv_l)
             newC = vv_c + 1;
         else
             newC = 0;
-        VV().set(TRACKING_GROUP, newL + newC);
+        VV().set(trackingGroupID, newL + newC);
 
 	}
 
@@ -317,31 +326,29 @@ public class EACCFServer extends DKVFServer {
             handleHeartbeatMessage(sm);
         } else if (sm.hasVvMessage()) {
             handleVvMessage(sm);
-        } else if (sm.hasSvvMessage()) {
-            handleSvvMessage(sm);
         }
     }
 
     private void handleReplicateMessage(ServerMessage sm) {
 		protocolLOGGER.finer(MessageFormat.format("Received replicate message: {0}", sm.toString()));
-		int senderTgId = sm.getReplicateMessage().getTg();
+		int tg = sm.getReplicateMessage().getTg();
 		Record d = sm.getReplicateMessage().getD();
 		insert(sm.getReplicateMessage().getKey(), d);
-		VV().set(senderTgId, d.getUt());
+		VV().set(tg, d.getUt());
 	}
 
     private void sendReplicateMessages(String key, Record recordToReplicate) {
         ServerMessage sm = ServerMessage.newBuilder()
                 .setReplicateMessage(
                         ReplicateMessage.newBuilder()
-                                .setTg(TRACKING_GROUP)
+                                .setTg(trackingGroupID)
                                 .setKey(key)
                                 .setD(recordToReplicate))
                 .build();
 
-        for (String s : sendVV) { //We can implement different data placement policies here.
+        for (String s : sendReplicate) {
             protocolLOGGER.finer(MessageFormat.format("Send replicate message to {0}: {1}", s, sm.toString()));
-            sendToServerViaChannel(s, sm);
+            sendToServerViaChannel(s + "_" + partitionID, sm);
         }
         //we don't need to synchronize for it, because it is not critical
         timeOfLastRepOrHeartbeat = Utils.getPhysicalTime();
@@ -353,48 +360,23 @@ public class EACCFServer extends DKVFServer {
 	}
 
 	void handleVvMessage(ServerMessage sm) {
+        protocolLOGGER.finest("Receive" + sm.toString());
 		String id = sm.getVvMessage().getServerId();
-
-		List<Long> receivedVv = sm.getVvMessage().getVvItemList();
-		protocolLOGGER.finest("Receive" + sm.toString());
-
-		vvs.put(id, receivedVv);
-	}
-
-	void handleSvvMessage(ServerMessage sm) {
-		protocolLOGGER.finest(sm.toString());
-		setSvv(sm.getSvvMessage().getSvvItemList());
-
-		// here we have only one tracking group so take only the first value
-		List<Long> _svv = svv
-                .stream()
-                .map(c -> c.get(TRACKING_GROUP))
-                .collect(Collectors.toList());
-
-        // the server message to be send
-		sm = ServerMessage
-                .newBuilder()
-                .setSvvMessage(SVVMessage.newBuilder().addAllSvvItem(_svv))
-                .build();
-
-		// send to all in checking group the new message
-        for (String s: sendSVV) {
-            sendToServerViaChannel(s, sm);
-        }
-
+		List<Long> _VV = sm.getVvMessage().getVvItemList();
+		vvs.put(id, _VV);
 	}
 
     // ----------------------------------------------------------------------------------------
     // UTIL METHODS
     // ----------------------------------------------------------------------------------------
 
-    void setSvv(List<Long> _svv) {
-		synchronized (svv) {
-			for (int i=0; i<_svv.size();i++)
-				svv.get(TRACKING_GROUP).set(i, _svv.get(i));
-			svv.notify();
-		}
-	}
+    void setSvv(List<List<Long>> svv) {
+        synchronized (svv) {
+            this.svv = new ArrayList<>(svv);
+            svv.notify();
+        }
+    }
+
 
     List<Long> VV() {
 	    return this.vvs.get(serverID);

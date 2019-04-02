@@ -8,11 +8,13 @@
         <server id="0_1" ip="127.0.0.1" port="3001"/>
     </connect_to>
     <protocol_properties>
+        <property key="replica" value="0, 1"/>
 
         <property key="replicaID" value="0"/>
         <property key="partitionID" value="0"/>
+        <property key="trackingGroupID" value="0"/>
 
-        <property key="tracking_groups" value="0_0,0_1,0_2,0_3,1_0,1_1,1_2,1_3"/>
+        <property key="tracking_groups" value="0_0,0_1,0_2,0_3 ; 1_0,1_1,1_2,1_3"/>
         <property key="checking_groups" value="0; 0,1; 0,1,2,3"/>
 
         <property key="message_delay" value="5"/>

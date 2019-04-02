@@ -40,6 +40,17 @@ public class Utils {
 		}
 	}
 
+	static void addEntriesAsMatrixAsString(String str, List<List<String>> ret) {
+		String[] vals = str.split(";");
+		for (String entry : vals) {
+			List<String> l = new ArrayList<>();
+			for (String e : entry.split(",")){
+				l.add(e.trim());
+			}
+			ret.add(l);
+		}
+	}
+
 	static List<Long> max (List<Long> first, List<Long> second){
 		List<Long> result = new ArrayList<>();
 		for (int i=0; i < first.size(); i++){ 

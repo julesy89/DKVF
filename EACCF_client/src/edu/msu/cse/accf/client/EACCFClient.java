@@ -36,9 +36,7 @@ public class EACCFClient extends DKVFClient {
 	public EACCFClient(ConfigReader cnfReader) {
 		super(cnfReader);
 		HashMap<String, List<String>> protocolProperties = cnfReader.getProtocolProperties();
-
 		numOfPartitions = new Integer(protocolProperties.get("num_of_partitions").get(0));
-
 		replicaID = new Integer(protocolProperties.get("replicaID").get(0));
 		ds = new HashMap<>();
 	}
