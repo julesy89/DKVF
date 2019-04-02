@@ -1,12 +1,9 @@
 package edu.msu.cse.accf.server;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-
 import edu.msu.cse.dkvf.metadata.Metadata.SVVMessage;
 import edu.msu.cse.dkvf.metadata.Metadata.ServerMessage;
-import edu.msu.cse.dkvf.metadata.Metadata.VVMessage;
+
+import java.util.List;
 
 import static edu.msu.cse.accf.server.Utils.createMatrix;
 

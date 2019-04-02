@@ -68,7 +68,7 @@ public abstract class DKVFServer extends DKVFBase {
 		//setting up synchronous communication if it is requested in the config file.
 		if (synchCommunication){
 			if ( connectToServers() == NetworkStatus.SUCCESS)
-				frameworkLOGGER.info("Sucessfully ran the server connector");
+				frameworkLOGGER.info("Successfully ran the server connector");
 			else {
 				frameworkLOGGER.info("Failed to setup up synchronous communication.");
 				return false;
@@ -77,13 +77,13 @@ public abstract class DKVFServer extends DKVFBase {
 		
 		//asynchronous channels are always enalbled.
 		if (setupChannelManagers() == NetworkStatus.SUCCESS)
-			frameworkLOGGER.info("Sucessfully ran server channel managers.");
+			frameworkLOGGER.info("Successfully ran server channel managers.");
 		else {
 			frameworkLOGGER.info("Failed to setup up channels for asynchronous communication.");
 			return false;
 		}
 		if (runDb() == StorageStatus.SUCCESS)
-			frameworkLOGGER.info("Sucessfully ran the stable storage");
+			frameworkLOGGER.info("Successfully ran the stable storage");
 		else {
 			frameworkLOGGER.info("Failed to setup up storage.");
 			return false;

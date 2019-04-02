@@ -80,7 +80,7 @@ public class EACCFServer extends DKVFServer {
 	
 	// the simulated message delay that is used
 	int messageDelay;
-	
+
 	// variable to save the last replicate or heartbeat message
 	long timeOfLastRepOrHeartbeat;
 
@@ -137,7 +137,12 @@ public class EACCFServer extends DKVFServer {
 		channelDelay = messageDelay;
 	}
 
-	public void handleClientMessage(ClientMessageAgent cma) {
+    // ----------------------------------------------------------------------------------------
+    // HANDLE CLIENT MESSAGES (GET, PUT)
+    // ----------------------------------------------------------------------------------------
+
+
+    public void handleClientMessage(ClientMessageAgent cma) {
 		if (cma.getClientMessage().hasGetMessage()) {
 			handleGetMessage(cma);
 		} else if (cma.getClientMessage().hasPutMessage()) {
@@ -253,23 +258,13 @@ public class EACCFServer extends DKVFServer {
 		cma.sendReply(cr);
 	}
 
-	private void sendReplicateMessages(String key, Record recordToReplicate) {
-		ServerMessage sm = ServerMessage.newBuilder()
-                .setReplicateMessage(
-                        ReplicateMessage.newBuilder()
-                        .setTg(TRACKING_GROUP)
-                        .setKey(key)
-                        .setD(recordToReplicate))
-                .build();
 
-		for (String s : sendVV) { //We can implement different data placement policies here.
-			protocolLOGGER.finer(MessageFormat.format("Send replicate message to {0}: {1}", s, sm.toString()));
-			sendToServerViaChannel(s, sm);
-		}
-		timeOfLastRepOrHeartbeat = Utils.getPhysicalTime(); //we don't need to synchronize for it, because it is not critical
-	}
 
-	private void updateHlc(long dt) {
+    // ----------------------------------------------------------------------------------------
+    // HLC
+    // ----------------------------------------------------------------------------------------
+
+    private void updateHlc(long dt) {
 
         long vv_l = Utils.getL(VV().get(TRACKING_GROUP));
         long physicalTime = Utils.getPhysicalTime();
@@ -309,19 +304,25 @@ public class EACCFServer extends DKVFServer {
 
 	}
 
-	public void handleServerMessage(ServerMessage sm) {
-		if (sm.hasReplicateMessage()) {
-			handleReplicateMessage(sm);
-		} else if (sm.hasHeartbeatMessage()) {
-			handleHearbeatMessage(sm);
-		} else if (sm.hasVvMessage()) {
-			handleVvMessage(sm);
-		} else if (sm.hasSvvMessage()) {
-			handleSvvMessage(sm);
-		}
-	}
 
-	private void handleReplicateMessage(ServerMessage sm) {
+    // ----------------------------------------------------------------------------------------
+    // HANDLE OR SEND SERVER MESSAGES (Heartbeat, Replicate, VV, SVV))
+    // ----------------------------------------------------------------------------------------
+
+
+    public void handleServerMessage(ServerMessage sm) {
+        if (sm.hasReplicateMessage()) {
+            handleReplicateMessage(sm);
+        } else if (sm.hasHeartbeatMessage()) {
+            handleHeartbeatMessage(sm);
+        } else if (sm.hasVvMessage()) {
+            handleVvMessage(sm);
+        } else if (sm.hasSvvMessage()) {
+            handleSvvMessage(sm);
+        }
+    }
+
+    private void handleReplicateMessage(ServerMessage sm) {
 		protocolLOGGER.finer(MessageFormat.format("Received replicate message: {0}", sm.toString()));
 		int senderTgId = sm.getReplicateMessage().getTg();
 		Record d = sm.getReplicateMessage().getD();
@@ -329,18 +330,35 @@ public class EACCFServer extends DKVFServer {
 		VV().set(senderTgId, d.getUt());
 	}
 
-	void handleHearbeatMessage(ServerMessage sm) {
-		int senderTgId = sm.getHeartbeatMessage().getTg();
-		VV().set(senderTgId, sm.getHeartbeatMessage().getTime());
+    private void sendReplicateMessages(String key, Record recordToReplicate) {
+        ServerMessage sm = ServerMessage.newBuilder()
+                .setReplicateMessage(
+                        ReplicateMessage.newBuilder()
+                                .setTg(TRACKING_GROUP)
+                                .setKey(key)
+                                .setD(recordToReplicate))
+                .build();
+
+        for (String s : sendVV) { //We can implement different data placement policies here.
+            protocolLOGGER.finer(MessageFormat.format("Send replicate message to {0}: {1}", s, sm.toString()));
+            sendToServerViaChannel(s, sm);
+        }
+        //we don't need to synchronize for it, because it is not critical
+        timeOfLastRepOrHeartbeat = Utils.getPhysicalTime();
+    }
+
+	void handleHeartbeatMessage(ServerMessage sm) {
+		int tg = sm.getHeartbeatMessage().getTg();
+		VV().set(tg, sm.getHeartbeatMessage().getTime());
 	}
 
 	void handleVvMessage(ServerMessage sm) {
-		int senderPId = sm.getVvMessage().getPId();
+		String id = sm.getVvMessage().getServerId();
+
 		List<Long> receivedVv = sm.getVvMessage().getVvItemList();
 		protocolLOGGER.finest("Receive" + sm.toString());
 
-		// TODO : Not correct yet. This must be the string of the server
-		vvs.put(String.valueOf(senderPId), receivedVv);
+		vvs.put(id, receivedVv);
 	}
 
 	void handleSvvMessage(ServerMessage sm) {
@@ -366,8 +384,11 @@ public class EACCFServer extends DKVFServer {
 
 	}
 
+    // ----------------------------------------------------------------------------------------
+    // UTIL METHODS
+    // ----------------------------------------------------------------------------------------
 
-	void setSvv(List<Long> newSvv) {
+    void setSvv(List<Long> newSvv) {
 		synchronized (svv) {
 			for (int i=0; i<newSvv.size();i++)
 				svv.get(TRACKING_GROUP).set(i, newSvv.get(i));
