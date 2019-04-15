@@ -234,7 +234,7 @@ public abstract class DKVFBase {
 			return StorageStatus.FAILURE;
 		}
 
-		List<Record> resultByte = new ArrayList<Record>();
+		List<Record> resultByte = new ArrayList<>();
 		StorageStatus status = storage.read(key, p, resultByte);
 		if (status != StorageStatus.SUCCESS)
 			return status;

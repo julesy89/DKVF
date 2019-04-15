@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<config>
+    <id>Client_0</id>
+    <connect_to>
+        <server id="0_1" ip="127.0.0.1" port="2010"/>
+        <server id="0_2" ip="127.0.0.1" port="2020"/>
+        <server id="0_0" ip="127.0.0.1" port="2000"/>
+        <server id="0_3" ip="127.0.0.1" port="2030"/>
+    </connect_to>
+    <protocol_properties>
+        <property key="replicaID" value="0"/>
+        <property key="num_of_partitions" value="1"/>
+    </protocol_properties>
+</config>

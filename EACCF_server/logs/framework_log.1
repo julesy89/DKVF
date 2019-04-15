@@ -1,0 +1,15 @@
+Apr 10, 2019 3:44:47 PM edu.msu.cse.dkvf.bdbStorage.BDBStorage run
+SEVERE: Problem in running db. Stack trace:
+com.sleepycat.je.EnvironmentLockedException: (JE 6.4.25) DB The environment cannot be locked for single writer access. ENV_LOCKED: The je.lck file could not be locked. Environment is invalid and must be closed.
+	at com.sleepycat.je.log.FileManager.<init>(FileManager.java:386)
+	at com.sleepycat.je.dbi.EnvironmentImpl.<init>(EnvironmentImpl.java:525)
+	at com.sleepycat.je.dbi.EnvironmentImpl.<init>(EnvironmentImpl.java:450)
+	at com.sleepycat.je.dbi.DbEnvPool.getEnvironment(DbEnvPool.java:224)
+	at com.sleepycat.je.Environment.makeEnvironmentImpl(Environment.java:287)
+	at com.sleepycat.je.Environment.<init>(Environment.java:268)
+	at com.sleepycat.je.Environment.<init>(Environment.java:212)
+	at edu.msu.cse.dkvf.bdbStorage.BDBStorage.run(BDBStorage.java:249)
+	at edu.msu.cse.dkvf.DKVFBase.runDb(DKVFBase.java:188)
+	at edu.msu.cse.dkvf.DKVFServer.runAll(DKVFServer.java:85)
+	at edu.msu.cse.eaccf.server.MainClass.main(MainClass.java:9)
+

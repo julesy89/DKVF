@@ -1,21 +1,12 @@
 package edu.msu.cse.dkvf.ycsbDriver;
 
-import java.lang.reflect.Constructor;
-import java.text.MessageFormat;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
-
-import com.yahoo.ycsb.ByteArrayByteIterator;
-import com.yahoo.ycsb.ByteIterator;
-import com.yahoo.ycsb.DB;
-import com.yahoo.ycsb.DBException;
-import com.yahoo.ycsb.Status;
-
+import com.yahoo.ycsb.*;
 import edu.msu.cse.dkvf.DKVFClient;
 import edu.msu.cse.dkvf.config.ConfigReader;
+
+import java.lang.reflect.Constructor;
+import java.text.MessageFormat;
+import java.util.*;
 
 /**
  * The YCSB driver for DKVF. 
@@ -43,7 +34,7 @@ public class DKVFDriver extends DB {
 			throw new DBException("Error in reading config file.");
 		}
 		String clientClassName = (String) p.getProperty("clientClassName");
-		System.out.println(MessageFormat.format("Client class name: {0}", clientClassName));
+		System.out.println(MessageFormat.format("client class name: {0}", clientClassName));
 		runClient(cnfReader, clientClassName);
 	}
 
@@ -62,7 +53,7 @@ public class DKVFDriver extends DB {
 			this.client = client;
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new DBException("probelm in instantiating client object:");
+			throw new DBException("problem in instantiating client object:");
 
 		}
 	}
@@ -82,13 +73,23 @@ public class DKVFDriver extends DB {
 	}
 
 	@Override
-	public Status insert(String arg0, String arg1, Map<String, ByteIterator> arg2) {
-		return Status.FORBIDDEN;
+	public Status insert(String table, String key, Map<String, ByteIterator> values) {
+		ByteIterator value = values.get(key);
+		if (value == null) {
+			return Status.FORBIDDEN;
+		} else {
+			return insert(key, value);
+		}
 	}
 
 	@Override
-	public Status read(String arg0, String arg1, Set<String> arg2, Map<String, ByteIterator> arg3) {
-		return Status.FORBIDDEN;
+	public Status read(String table, String key, Set<String> fields, Map<String, ByteIterator> result) {
+
+	    byte[] _result = client.get(key);
+        if (result == null) return Status.NOT_FOUND;
+
+        result.put(key, new ByteArrayByteIterator(_result));
+        return Status.OK;
 	}
 	
 	@Override
@@ -139,9 +140,4 @@ public class DKVFDriver extends DB {
 	
 	public Status swap (String key1, String key2){return Status.OK;}
 
-	@Override
-	public Status rotx(Set<String> arg0, Map<String, ByteIterator> arg1) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 }
