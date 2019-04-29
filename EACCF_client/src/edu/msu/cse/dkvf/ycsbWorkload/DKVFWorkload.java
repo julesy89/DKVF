@@ -921,7 +921,7 @@ public class DKVFWorkload extends Workload {
 			
 			long ist = measurements.getIntendedtartTimeNs();
 			long st = System.nanoTime();
-			db.insert(dbkey, value);
+            db.insert(dbkey, value);
 			long en = System.nanoTime();
 
 			measurements.measure("INSERT", (int) ((en - st) / 1000));

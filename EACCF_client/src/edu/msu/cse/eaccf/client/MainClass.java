@@ -13,7 +13,8 @@ public class MainClass {
         EACCFClient client = new EACCFClient(cnfReader);
         client.runAll();
 
-        client.put("key1", "val1".getBytes());
+        client.put("key", "val1".getBytes());
+        //client.replicaID = 1;
 
 
         byte[] b = client.get("key");

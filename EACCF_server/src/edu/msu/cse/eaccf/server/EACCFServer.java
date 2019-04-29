@@ -15,9 +15,6 @@ import java.util.function.Predicate;
 
 /**
  * Experimental Adaptive Causal Consistency
- *
- *
- *
  */
 public class EACCFServer extends DKVFServer {
 

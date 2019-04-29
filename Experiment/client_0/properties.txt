@@ -1,10 +1,11 @@
 fieldlength=16
-operationcount=100000
-recordcount=100
+operationcount=300
+recordcount=200
+target=10
 workload=edu.msu.cse.dkvf.ycsbWorkload.DKVFWorkload
 
 measurementtype=timeseries
-timeseries.granularity=20
+timeseries.granularity=100
 
 readallfields=false
 
@@ -16,8 +17,8 @@ ampinsertproportion=0
 rotxproportion = 0
 
 
-threadcount=30
+threadcount=1
 
-ampfactor=10
-requestdistribution=zipfian
+ampfactor=0
+requestdistribution=uniform
 

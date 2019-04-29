@@ -1,6 +1,9 @@
 package com.yahoo.ycsb;
 
 import com.yahoo.ycsb.measurements.Measurements;
+import edu.msu.cse.dkvf.ycsbDriver.DKVFDriver;
+import edu.msu.cse.eaccf.client.EACCFClient;
+
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
@@ -27,6 +30,10 @@ public class ClientThread implements Runnable {
   private Properties props;
   private long targetOpsTickNs;
   private final Measurements measurements;
+
+  public DB getDb() {
+    return db;
+  }
 
   /**
    * Constructor.
@@ -97,10 +104,23 @@ public class ClientThread implements Runnable {
       sleepUntil(System.nanoTime() + randomMinorDelay);
     }
     try {
+
+
+
       if (dotransactions) {
         long startTimeNanos = System.nanoTime();
 
         while (((opcount == 0) || (opsdone < opcount)) && !workload.isStopRequested()) {
+
+            int chunk = opcount / 3;
+
+            if (opsdone < 1 * chunk) {
+                ((EACCFClient) ((DKVFDriver) db.db).client).checkingGroup = 2;
+            } else if (opsdone > 1 * chunk && opsdone <= 2 * chunk) {
+                ((EACCFClient) ((DKVFDriver) db.db).client).checkingGroup = 1;
+            } else if (opsdone > 2 * chunk) {
+                ((EACCFClient) ((DKVFDriver) db.db).client).checkingGroup = 0;
+            }
 
           if (!workload.doTransaction(db, workloadstate)) {
             break;
@@ -114,6 +134,16 @@ public class ClientThread implements Runnable {
         long startTimeNanos = System.nanoTime();
 
         while (((opcount == 0) || (opsdone < opcount)) && !workload.isStopRequested()) {
+
+            int chunk = opcount / 3;
+
+            if (opsdone <= 1 * chunk) {
+                ((EACCFClient) ((DKVFDriver) db.db).client).checkingGroup = 2;
+            } else if (opsdone > 1 * chunk && opsdone <= 2 * chunk) {
+                ((EACCFClient) ((DKVFDriver) db.db).client).checkingGroup = 1;
+            } else if (opsdone > 2 * chunk) {
+                ((EACCFClient) ((DKVFDriver) db.db).client).checkingGroup = 0;
+            }
 
           if (!workload.doInsert(db, workloadstate)) {
             break;

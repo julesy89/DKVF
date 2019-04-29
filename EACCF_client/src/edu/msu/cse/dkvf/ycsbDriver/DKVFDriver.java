@@ -3,6 +3,7 @@ package edu.msu.cse.dkvf.ycsbDriver;
 import com.yahoo.ycsb.*;
 import edu.msu.cse.dkvf.DKVFClient;
 import edu.msu.cse.dkvf.config.ConfigReader;
+import org.apache.htrace.core.Tracer;
 
 import java.lang.reflect.Constructor;
 import java.text.MessageFormat;
@@ -13,9 +14,9 @@ import java.util.*;
  *
  */
 public class DKVFDriver extends DB {
-	DKVFClient client;
+	public DKVFClient client;
 
-	/**
+    /**
 	 * Initializes the driver.
 	 * @throws DBException
 	 */
@@ -106,6 +107,7 @@ public class DKVFDriver extends DB {
 	 * @param value
 	 * @return The result of the operation
 	 */
+    @Override
 	public Status update(String key, ByteIterator value) {
 		return insert(key, value);
 	}
@@ -116,6 +118,7 @@ public class DKVFDriver extends DB {
 	 * @param value
 	 * @return The result of the operation
 	 */
+    @Override
 	public Status insert(String key, ByteIterator value) {
 		boolean result = client.put(key, value.toArray());
 		if (!result)
@@ -129,6 +132,7 @@ public class DKVFDriver extends DB {
 	 * @param resultValue The found value. Only the first element is used. 
 	 * @return The result of the operation
 	 */
+    @Override
 	public Status read(String key, Set<ByteIterator> resultValue) {
 		byte[] result = client.get(key);
 		if (result == null)
@@ -137,7 +141,12 @@ public class DKVFDriver extends DB {
 		return Status.OK;
 	}
 	
-	
+	@Override
 	public Status swap (String key1, String key2){return Status.OK;}
+
+    @Override
+    public Status rotx(Set<String> key1, HashMap<String, ByteIterator> results) {
+        return null;
+    }
 
 }

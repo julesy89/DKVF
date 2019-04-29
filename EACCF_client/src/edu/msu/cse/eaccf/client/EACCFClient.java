@@ -1,13 +1,11 @@
 package edu.msu.cse.eaccf.client;
 
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.google.protobuf.ByteString;
 
+import com.sun.tools.javac.util.Pair;
 import edu.msu.cse.dkvf.DKVFClient;
 import edu.msu.cse.dkvf.ServerConnector.NetworkStatus;
 import edu.msu.cse.dkvf.Utils;
@@ -27,11 +25,12 @@ public class EACCFClient extends DKVFClient {
 	int replicaID;
 
 	// So fare hardcoded checking group - needs to change dynamically later on
-	final int CHECKING_GROUP = 0;
+	public int checkingGroup = 0;
 
 	// number of partitions (necessary for key - server mapping here)
 	int numOfPartitions;
 
+	List<Pair<Integer, Integer>> checkingGroupSwitch = new LinkedList<>();
 
 	public EACCFClient(ConfigReader cnfReader) {
 		super(cnfReader);
@@ -39,10 +38,14 @@ public class EACCFClient extends DKVFClient {
 		numOfPartitions = new Integer(protocolProperties.get("num_of_partitions").get(0));
 		replicaID = new Integer(protocolProperties.get("replicaID").get(0));
 		ds = new HashMap<>();
+
+
 	}
 
-
 	public boolean put(String key, byte[] value) {
+
+	    //System.out.println(this.checkingGroup);
+
 		try {
 			PutMessage pm = PutMessage
                     .newBuilder()
@@ -79,7 +82,7 @@ public class EACCFClient extends DKVFClient {
                     .newBuilder()
                     .addAllDsItem(getTgTimeItems())
                     .setKey(key)
-                    .setCg(CHECKING_GROUP)
+                    .setCg(checkingGroup)
                     .build();
 
 			ClientMessage cm = ClientMessage
@@ -109,8 +112,9 @@ public class EACCFClient extends DKVFClient {
 
 	public String findServer(String key) throws NoSuchAlgorithmException {
 
+        //List<Integer> cg = checkingGroups.get(this.checkingGroup);
 		//long hash = Utils.getMd5HashLong(key);
-		//int partition =  (int) (hash % numOfPartitions);
+		//int index =  (int) (hash % cg.size());
 
 		int partition = 0;
 
@@ -139,4 +143,5 @@ public class EACCFClient extends DKVFClient {
 		}
 		return result;
 	}
+
 }

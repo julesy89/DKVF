@@ -3,7 +3,7 @@
     <id>Client_0</id>
     <connect_to>
 
-        <server id="0_0" ip="localhost" port="2000"/>
+        <server id="0_0" ip="coinlab.dhcp.egr.msu.edu" port="2000"/>
         <server id="0_1" ip="coinlab.dhcp.egr.msu.edu" port="2010"/>
         <server id="0_2" ip="coinlab.dhcp.egr.msu.edu" port="2020"/>
         <server id="0_3" ip="coinlab.dhcp.egr.msu.edu" port="2030"/>

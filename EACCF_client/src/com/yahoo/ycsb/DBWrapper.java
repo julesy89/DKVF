@@ -17,7 +17,6 @@
 
 package com.yahoo.ycsb;
 
-import java.util.Map;
 import com.yahoo.ycsb.measurements.Measurements;
 import org.apache.htrace.core.TraceScope;
 import org.apache.htrace.core.Tracer;
@@ -29,7 +28,6 @@ import java.util.*;
  * Also reports latency separately between OK and failed operations.
  */
 public class DBWrapper extends DB {
-  private final DB db;
   private final Measurements measurements;
   private final Tracer tracer;
 
@@ -244,4 +242,31 @@ public class DBWrapper extends DB {
       return res;
     }
   }
+
+
+
+  public Status insert(String key, ByteIterator value) {
+    try (final TraceScope span = tracer.newScope(scopeStringInsert)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.insert(key, value);
+      long en = System.nanoTime();
+      measure("INSERT", res, ist, st, en);
+      measurements.reportStatus("INSERT", res);
+      return res;
+    }
+  }
+
+    public Status read(String key, Set<ByteIterator> result) {
+        try (final TraceScope span = tracer.newScope(scopeStringRead)) {
+            long ist = measurements.getIntendedtartTimeNs();
+            long st = System.nanoTime();
+            Status res = db.read(key, result);
+            long en = System.nanoTime();
+            measure("READ", res, ist, st, en);
+            measurements.reportStatus("READ", res);
+            return res;
+        }
+    }
+
 }
